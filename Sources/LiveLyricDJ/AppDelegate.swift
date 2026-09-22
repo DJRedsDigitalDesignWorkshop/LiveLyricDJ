@@ -62,13 +62,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMainMenu() {
         let mainMenu = NSMenu()
         let appMenu = NSMenu(title: "LiveLyricDJ")
-        appMenu.addItem(
-            NSMenuItem(
-                title: "Quit LiveLyricDJ",
-                action: #selector(NSApplication.terminate(_:)),
-                keyEquivalent: "q"
-            )
-        )
+        appMenu.addItem(NSMenuItem(
+            title: "About LiveLyricDJ",
+            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+            keyEquivalent: ""
+        ))
+        appMenu.addItem(NSMenuItem.separator())
+
+        let servicesMenu = NSMenu(title: "Services")
+        NSApp.servicesMenu = servicesMenu
+        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+        servicesItem.submenu = servicesMenu
+        appMenu.addItem(servicesItem)
+
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(NSMenuItem(
+            title: "Hide LiveLyricDJ",
+            action: #selector(NSApplication.hide(_:)),
+            keyEquivalent: "h"
+        ))
+        appMenu.addItem(NSMenuItem(
+            title: "Hide Others",
+            action: #selector(NSApplication.hideOtherApplications(_:)),
+            keyEquivalent: "h"
+        ))
+        appMenu.items.last?.keyEquivalentModifierMask = [.command, .option]
+        appMenu.addItem(NSMenuItem(
+            title: "Show All",
+            action: #selector(NSApplication.unhideAllApplications(_:)),
+            keyEquivalent: ""
+        ))
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(NSMenuItem(
+            title: "Quit LiveLyricDJ",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
+        ))
         let appMenuItem = NSMenuItem(title: "LiveLyricDJ", action: nil, keyEquivalent: "")
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)

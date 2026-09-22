@@ -59,7 +59,7 @@ dist/                                build outputs (.app, .dmg) — not tracked,
 - [x] App builds clean (`swift build`, release too), launches, runs, quits cleanly
 - [x] OSC codec + LRC parser verified by standalone tests (round-trip ,ssb, argless /Ping, bundle + split TCP frames, LRC offset/multi-tag) — all passed
 - [x] LRCLIB endpoints verified live (`/api/get` with duration, `/api/search`)
-- [x] Packaged universal macOS 13+ release: `dist/LiveLyricDJ.app` and `dist/LiveLyricDJ-1.0.4.dmg`
+- [x] Packaged universal macOS 13+ release: `dist/LiveLyricDJ.app` and `dist/LiveLyricDJ-1.0.5.dmg`
 - [ ] **NOT tested live against Serato DJ Pro** — this is the #1 open item
 - [x] Signed with `Developer ID Application: justin marsh (JZMJB5THL9)`, notarized, and stapled
 - [x] Gatekeeper accepts both the app and DMG as `Notarized Developer ID`
@@ -82,8 +82,8 @@ dist/                                build outputs (.app, .dmg) — not tracked,
 # Builds universal app, signs it, notarizes/staples the app and DMG,
 # then verifies both with Gatekeeper.
 SIGN_IDENTITY="Developer ID Application: justin marsh (JZMJB5THL9)" \
-  VERSION="1.0.4" BUILD="5" INSTALL_APPS=0 ./scripts/build-app.sh
-VERSION="1.0.4" ./scripts/notarize.sh
+  VERSION="1.0.5" BUILD="6" INSTALL_APPS=0 ./scripts/build-app.sh
+VERSION="1.0.5" ./scripts/notarize.sh
 ```
 
 `scripts/notarize.sh` archives the app, notarizes and staples it, builds and signs the DMG, then notarizes, staples, and Gatekeeper-verifies the DMG.
@@ -105,7 +105,7 @@ VERSION="1.0.4" ./scripts/notarize.sh
 - No album on the wire; lyrics matching uses artist+title+duration (duration from file tags)
 - Lyrics source: LRCLIB (free, no key) with LyricsOvh plain-text fallback; cache is local JSON keyed by SHA-1 of normalized artist|title|duration
 - Bundle ID remains `com.seratolyrics.app` to preserve the existing local-network permission; the visible app, executable, Serato peer, cache, and installer are LiveLyricDJ.
-- Version 1.0.4 is universal (`arm64` + `x86_64`) and installs as a notarized Developer ID app on macOS 13+.
+- Version 1.0.5 is universal (`arm64` + `x86_64`) and installs as a notarized Developer ID app on macOS 13+.
 
 ## 8. Useful references
 
