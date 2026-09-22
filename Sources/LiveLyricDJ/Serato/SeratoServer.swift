@@ -22,7 +22,7 @@ protocol SeratoServerDelegate: AnyObject {
 final class SeratoServer {
     weak var delegate: SeratoServerDelegate?
 
-    private let peerName = "SeratoLyrics"
+    private let peerName = "LiveLyricDJ"
     private let peerUUID = UUID().uuidString
     private let secret = Data(hex: "d25db261a4411bc1f3788f57723b8977c541a4b619b94a9a8b45c46f8511c2f8")!
     private let sentinel = Data([

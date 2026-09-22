@@ -1,9 +1,16 @@
 import AppKit
 
-// Renders the SeratoLyrics app icon at all required sizes into an
+// Renders the supplied LiveLyricDJ art at all required sizes into an
 // AppIcon.iconset directory (run `iconutil -c icns` on it afterwards).
 
 let PX = 1024
+let out = CommandLine.arguments[1]
+let sourcePath = CommandLine.arguments.count > 2
+    ? CommandLine.arguments[2]
+    : "Support/LiveLyricDJ-icon-source.png"
+guard let source = NSImage(contentsOfFile: sourcePath) else {
+    fatalError("Could not load icon source: \(sourcePath)")
+}
 let rep = NSBitmapImageRep(
     bitmapDataPlanes: nil, pixelsWide: PX, pixelsHigh: PX,
     bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
@@ -12,37 +19,14 @@ let rep = NSBitmapImageRep(
 let g = NSGraphicsContext(bitmapImageRep: rep)!
 NSGraphicsContext.saveGraphicsState()
 NSGraphicsContext.current = g
-
-// Dark rounded background
-NSColor(calibratedRed: 0.09, green: 0.09, blue: 0.11, alpha: 1).setFill()
-NSBezierPath(
-    roundedRect: NSRect(x: 0, y: 0, width: PX, height: PX),
-    xRadius: 230, yRadius: 230
-).fill()
-
-// Accent strips: red (deck A) on top, cyan (deck B) on bottom
-NSColor(calibratedRed: 1.0, green: 0.27, blue: 0.23, alpha: 1).setFill()
-NSBezierPath(
-    roundedRect: NSRect(x: 70, y: PX - 150, width: PX - 140, height: 80),
-    xRadius: 40, yRadius: 40
-).fill()
-NSColor(calibratedRed: 0.0, green: 0.75, blue: 0.83, alpha: 1).setFill()
-NSBezierPath(
-    roundedRect: NSRect(x: 70, y: 70, width: PX - 140, height: 80),
-    xRadius: 40, yRadius: 40
-).fill()
-
-// Big music note
-let font = NSFont.systemFont(ofSize: 470, weight: .bold)
-let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white]
-let str = NSAttributedString(string: "♪", attributes: attrs)
-let size = str.size()
-str.draw(at: NSPoint(x: (CGFloat(PX) - size.width) / 2, y: (CGFloat(PX) - size.height) / 2))
+source.draw(in: NSRect(x: 0, y: 0, width: PX, height: PX),
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1)
 
 NSGraphicsContext.restoreGraphicsState()
 
 // Export all iconutil sizes
-let out = CommandLine.arguments[1]
 try? FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
 let sizes: [(Int, Int)] = [(16, 1), (16, 2), (32, 1), (32, 2), (128, 1), (128, 2), (256, 1), (256, 2), (512, 1), (512, 2)]
 for (base, scale) in sizes {

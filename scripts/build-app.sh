@@ -1,24 +1,24 @@
 #!/bin/bash
-# Builds SeratoLyrics.app from the SwiftPM release binary.
+# Builds LiveLyricDJ.app from the SwiftPM release binary.
 #
 # Usage:
 #   ./scripts/build-app.sh                          # ad-hoc signed (local testing)
 #   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" ./scripts/build-app.sh
-#   BUNDLE_ID="com.example.seratolyrics" VERSION="1.0.2" ./scripts/build-app.sh
+#   BUNDLE_ID="com.example.livelyricdj" VERSION="1.0.3" ./scripts/build-app.sh
 #   INSTALL_APPS=0 ./scripts/build-app.sh           # skip install to /Applications
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="SeratoLyrics"
+APP_NAME="LiveLyricDJ"
 BUNDLE_ID="${BUNDLE_ID:-com.seratolyrics.app}"
-VERSION="${VERSION:-1.0.2}"
-BUILD="${BUILD:-3}"
+VERSION="${VERSION:-1.0.3}"
+BUILD="${BUILD:-4}"
 CONFIG="${CONFIG:-release}"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 TEAM_ID="${TEAM_ID:-}"
 INSTALL_APPS="${INSTALL_APPS:-1}"
 ARCHS="${ARCHS:-arm64 x86_64}"
-BUILD_DIR=".build/seratolyrics-universal"
+BUILD_DIR=".build/livelyricdj-universal"
 
 case "$CONFIG" in
     release) CONFIG_DIR="Release" ;;
@@ -50,6 +50,7 @@ else
 fi
 cp Support/Info.plist "$APP/Contents/Info.plist"
 cp Support/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp Support/MenuBarIcon.png "$APP/Contents/Resources/MenuBarIcon.png"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$APP/Contents/Info.plist"

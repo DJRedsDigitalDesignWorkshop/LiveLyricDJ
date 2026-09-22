@@ -1,5 +1,5 @@
 #!/bin/bash
-# Notarizes and staples a SeratoLyrics app and its DMG with Apple's notary service.
+# Notarizes and staples a LiveLyricDJ app and its DMG with Apple's notary service.
 # Requires a Developer ID Application certificate and App Store Connect
 # credentials. Use a keychain profile to avoid passing secrets on the CLI:
 #
@@ -7,15 +7,15 @@
 #       --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-password"
 #
 # Usage:
-#   VERSION="1.0.2" ./scripts/notarize.sh # uses keychain profile "SeratoLyrics"
+#   VERSION="1.0.3" ./scripts/notarize.sh # uses keychain profile "SeratoLyrics"
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP="dist/SeratoLyrics.app"
+APP="dist/LiveLyricDJ.app"
 [ -d "$APP" ] || { echo "No $APP — run ./scripts/build-app.sh with SIGN_IDENTITY first"; exit 1; }
 VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")}"
-ZIP="dist/SeratoLyrics-$VERSION-notarization.zip"
-DMG="dist/SeratoLyrics-$VERSION.dmg"
+ZIP="dist/LiveLyricDJ-$VERSION-notarization.zip"
+DMG="dist/LiveLyricDJ-$VERSION.dmg"
 SIGN_IDENTITY="${SIGN_IDENTITY:-$(codesign -dv --verbose=4 "$APP" 2>&1 | sed -n 's/^Authority=\(Developer ID Application:.*\)$/\1/p' | head -n 1)}"
 [ -n "$SIGN_IDENTITY" ] || { echo "No Developer ID Application signing identity found on $APP"; exit 1; }
 

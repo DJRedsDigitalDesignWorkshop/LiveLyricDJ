@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "SeratoLyrics",
+    name: "LiveLyricDJ",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "SeratoLyrics",
-            path: "Sources/SeratoLyrics"
+            name: "LiveLyricDJ",
+            path: "Sources/LiveLyricDJ"
         )
     ]
 )

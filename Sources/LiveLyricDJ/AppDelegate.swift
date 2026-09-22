@@ -43,14 +43,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.title = "♫ Lyrics"
-            button.toolTip = "SeratoLyrics controls: move banner, snap to top, or quit"
+            let menuIconURL = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png")
+            button.image = menuIconURL.flatMap(NSImage.init(contentsOf:))
+            button.image?.size = NSSize(width: 18, height: 18)
+            button.image?.isTemplate = false
+            button.toolTip = "LiveLyricDJ controls: move banner, snap to top, or quit"
         }
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Drag Mode: Move Banner", action: #selector(toggleDragMode), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Snap to Top", action: #selector(snapToTop), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit SeratoLyrics", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit LiveLyricDJ", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         item.menu = menu
         statusItem = item
     }

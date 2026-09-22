@@ -1,4 +1,4 @@
-# SeratoLyrics — Handoff Document
+# LiveLyricDJ — Handoff Document
 
 Written for an agent with no prior context on this project. The project is **not** a git repo yet — everything lives on disk at `/Users/user/Documents/serato lyrics display`.
 
@@ -27,7 +27,7 @@ Key mechanics (all implemented in this repo):
 
 ```
 Package.swift                        SwiftPM, macOS 13+, executable target
-Sources/SeratoLyrics/
+Sources/LiveLyricDJ/
   main.swift                         NSApplication bootstrap (.accessory policy)
   AppDelegate.swift                  wiring, status item menu, 10 Hz lyric ticker
   AppState.swift                     seratoConnected / dragMode published state
@@ -38,7 +38,7 @@ Sources/SeratoLyrics/
                                      subscriptions, status routing (hop to MainActor)
   Lyrics/LRCParser.swift             LRC parser ([mm:ss.xx], [offset:], multi-tags)
   Lyrics/LyricsService.swift         LRCLIB → LRCLIB search → LyricsOvh; .json cache in
-                                     ~/Library/Application Support/SeratoLyrics/lyrics/
+                                     ~/Library/Application Support/LiveLyricDJ/lyrics/
   Lyrics/DeckController.swift        track-change → duration read → lyrics fetch → state
   Views/BannerView.swift             SwiftUI banner: 2 lanes, karaoke + 2 upcoming lines
   Window/BannerWindowController.swift NSPanel: borderless, nonactivating, .screenSaver level,
@@ -46,10 +46,10 @@ Sources/SeratoLyrics/
 Support/Info.plist                   LSUIElement accessory app, versioning
 Support/AppIcon.icns                 generated icon
 scripts/
-  build-app.sh                       release build → dist/SeratoLyrics.app → codesign
+  build-app.sh                       release build → dist/LiveLyricDJ.app → codesign
                                      → install to /Applications (INSTALL_APPS=0 to skip)
   notarize.sh                        notarytool submit + staple (needs profile "SeratoLyrics")
-  make-dmg.sh                        hdiutil → dist/SeratoLyrics-<version>.dmg
+  make-dmg.sh                        hdiutil → dist/LiveLyricDJ-<version>.dmg
   make-icon.swift                    regenerates AppIcon.icns
 dist/                                build outputs (.app, .dmg) — not tracked, not git
 ```
@@ -59,7 +59,7 @@ dist/                                build outputs (.app, .dmg) — not tracked,
 - [x] App builds clean (`swift build`, release too), launches, runs, quits cleanly
 - [x] OSC codec + LRC parser verified by standalone tests (round-trip ,ssb, argless /Ping, bundle + split TCP frames, LRC offset/multi-tag) — all passed
 - [x] LRCLIB endpoints verified live (`/api/get` with duration, `/api/search`)
-- [x] Packaged universal macOS 13+ release: `dist/SeratoLyrics.app` and `dist/SeratoLyrics-1.0.2.dmg`
+- [x] Packaged universal macOS 13+ release: `dist/LiveLyricDJ.app` and `dist/LiveLyricDJ-1.0.3.dmg`
 - [ ] **NOT tested live against Serato DJ Pro** — this is the #1 open item
 - [x] Signed with `Developer ID Application: justin marsh (JZMJB5THL9)`, notarized, and stapled
 - [x] Gatekeeper accepts both the app and DMG as `Notarized Developer ID`
@@ -82,20 +82,20 @@ dist/                                build outputs (.app, .dmg) — not tracked,
 # Builds universal app, signs it, notarizes/staples the app and DMG,
 # then verifies both with Gatekeeper.
 SIGN_IDENTITY="Developer ID Application: justin marsh (JZMJB5THL9)" \
-  VERSION="1.0.2" BUILD="3" INSTALL_APPS=0 ./scripts/build-app.sh
-VERSION="1.0.2" ./scripts/notarize.sh
+  VERSION="1.0.3" BUILD="4" INSTALL_APPS=0 ./scripts/build-app.sh
+VERSION="1.0.3" ./scripts/notarize.sh
 ```
 
 `scripts/notarize.sh` archives the app, notarizes and staples it, builds and signs the DMG, then notarizes, staples, and Gatekeeper-verifies the DMG.
 
 ## 6. Testing checklist (before/after release — user must run)
 
-1. Launch Serato DJ Pro 4.x. Open app (or `open /Applications/SeratoLyrics.app`).
-2. First launch: allow **Local Network** permission; if Serato never connects, check **Setup → Expansion Packs → External Control** → activate "SeratoLyrics".
+1. Launch Serato DJ Pro 4.x. Open app (or `open /Applications/LiveLyricDJ.app`).
+2. First launch: allow **Local Network** permission; if Serato never connects, check **Setup → Expansion Packs → External Control** → activate "LiveLyricDJ".
 3. Load tracks on both decks → banner shows artist/title per lane, lyrics load (green = connected dot, "loading…" → line count).
 4. Press play → current lyric line highlights and advances with the playhead; pause/scrub/load-new-track all behave.
 5. Drag Mode (menu bar ♪ icon) moves the banner; Snap to Top restores it.
-6. Watch console logs if running the binary directly: `dist/SeratoLyrics.app/Contents/MacOS/SeratoLyrics` → expect `authorize response sent` → `subscribed` → `[Serato] connected` → `[Deck1] lyrics for ...`.
+6. Watch console logs if running the binary directly: `dist/LiveLyricDJ.app/Contents/MacOS/LiveLyricDJ` → expect `authorize response sent` → `subscribed` → `[Serato] connected` → `[Deck1] lyrics for ...`.
 
 **Biggest known risk:** the user runs **Serato 4.x**; the protocol was only verified against **3.3.5.29**. If no data flows, the connection handshake logs will say which stage fails.
 
@@ -104,8 +104,8 @@ VERSION="1.0.2" ./scripts/notarize.sh
 - Only decks 0-1 displayed (two lanes, per user's design)
 - No album on the wire; lyrics matching uses artist+title+duration (duration from file tags)
 - Lyrics source: LRCLIB (free, no key) with LyricsOvh plain-text fallback; cache is local JSON keyed by SHA-1 of normalized artist|title|duration
-- Bundle ID is `com.seratolyrics.app`.
-- Version 1.0.2 is universal (`arm64` + `x86_64`) and installs as a notarized Developer ID app on macOS 13+.
+- Bundle ID remains `com.seratolyrics.app` to preserve the existing local-network permission; the visible app, executable, Serato peer, cache, and installer are LiveLyricDJ.
+- Version 1.0.3 is universal (`arm64` + `x86_64`) and installs as a notarized Developer ID app on macOS 13+.
 
 ## 8. Useful references
 
