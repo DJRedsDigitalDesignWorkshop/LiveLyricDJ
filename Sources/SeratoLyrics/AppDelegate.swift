@@ -1,0 +1,105 @@
+import AppKit
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var windowController: BannerWindowController?
+    private var seratoServer: SeratoServer?
+    private var deckControllers: [DeckController] = []
+    private var statusItem: NSStatusItem?
+    private let app = AppState()
+    private var ticker: Timer?
+    private var decks: [DeckState] = []
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let deckA = DeckState(label: "A")
+        let deckB = DeckState(label: "B")
+        decks = [deckA, deckB]
+        deckControllers = [
+            DeckController(deckIndex: 0, state: deckA),
+            DeckController(deckIndex: 1, state: deckB),
+        ]
+
+        windowController = BannerWindowController(app: app, deckA: deckA, deckB: deckB)
+
+        let server = SeratoServer()
+        server.delegate = self
+        server.start()
+        seratoServer = server
+
+        setupStatusItem()
+
+        // 10 Hz ticker: keeps lyric lines advancing smoothly between
+        // playhead updates by extrapolating from the last play rate.
+        ticker = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                for deck in self.decks {
+                    deck.extrapolate()
+                }
+            }
+        }
+    }
+
+    private func setupStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = item.button {
+            button.image = NSImage(systemSymbolName: "music.note", accessibilityDescription: "SeratoLyrics")
+        }
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Drag Mode: Move Banner", action: #selector(toggleDragMode), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Snap to Top", action: #selector(snapToTop), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit SeratoLyrics", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        item.menu = menu
+        statusItem = item
+    }
+
+    @objc private func toggleDragMode() {
+        guard let windowController else { return }
+        windowController.setDragMode(!app.dragMode)
+        statusItem?.menu?.item(at: 0)?.title = app.dragMode
+            ? "Lock Banner Position"
+            : "Drag Mode: Move Banner"
+    }
+
+    @objc private func snapToTop() {
+        windowController?.positionAtTop()
+    }
+}
+
+extension AppDelegate: SeratoServerDelegate {
+    func seratoConnectionStateChanged(connected: Bool) {
+        app.seratoConnected = connected
+        print("[Serato] \(connected ? "connected" : "disconnected")")
+    }
+
+    func seratoDeck(deck: Int, title: String) {
+        guard let c = controller(for: deck) else { return }
+        c.handleTitle(title)
+    }
+
+    func seratoDeck(deck: Int, artist: String) {
+        guard let c = controller(for: deck) else { return }
+        c.handleArtist(artist)
+    }
+
+    func seratoDeck(deck: Int, filepath: String) {
+        guard let c = controller(for: deck) else { return }
+        c.handleFilepath(filepath)
+    }
+
+    func seratoDeck(deck: Int, valid: Bool) {
+        guard let c = controller(for: deck) else { return }
+        c.handleValid(valid)
+    }
+
+    func seratoDeck(deck: Int, positionSeconds: Double, playRate: Float, bpm: Float) {
+        guard let c = controller(for: deck) else { return }
+        c.handlePlayhead(positionSeconds: positionSeconds, playRate: playRate, bpm: bpm)
+    }
+
+    private func controller(for deck: Int) -> DeckController? {
+        guard deck >= 0, deck < deckControllers.count else { return nil }
+        return deckControllers[deck]
+    }
+}

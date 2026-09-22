@@ -1,0 +1,13 @@
+# macOS Finder metadata
+.DS_Store
+
+# Swift Package Manager build products
+.build/
+
+# Locally packaged release artifacts
+dist/
+
+# Local credentials and generated credential files
+.env
+.env.*
+!.env.example
