@@ -4,15 +4,15 @@
 # Usage:
 #   ./scripts/build-app.sh                          # ad-hoc signed (local testing)
 #   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" ./scripts/build-app.sh
-#   BUNDLE_ID="com.example.livelyricdj" VERSION="1.0.3" ./scripts/build-app.sh
+#   BUNDLE_ID="com.example.livelyricdj" VERSION="1.0.4" ./scripts/build-app.sh
 #   INSTALL_APPS=0 ./scripts/build-app.sh           # skip install to /Applications
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APP_NAME="LiveLyricDJ"
 BUNDLE_ID="${BUNDLE_ID:-com.seratolyrics.app}"
-VERSION="${VERSION:-1.0.3}"
-BUILD="${BUILD:-4}"
+VERSION="${VERSION:-1.0.4}"
+BUILD="${BUILD:-5}"
 CONFIG="${CONFIG:-release}"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 TEAM_ID="${TEAM_ID:-}"

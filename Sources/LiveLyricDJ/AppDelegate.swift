@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         seratoServer = server
 
         setupStatusItem()
+        setupMainMenu()
 
         // 10 Hz ticker: keeps lyric lines advancing smoothly between
         // playhead updates by extrapolating from the last play rate.
@@ -56,6 +57,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Quit LiveLyricDJ", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         item.menu = menu
         statusItem = item
+    }
+
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+        let appMenu = NSMenu(title: "LiveLyricDJ")
+        appMenu.addItem(
+            NSMenuItem(
+                title: "Quit LiveLyricDJ",
+                action: #selector(NSApplication.terminate(_:)),
+                keyEquivalent: "q"
+            )
+        )
+        let appMenuItem = NSMenuItem(title: "LiveLyricDJ", action: nil, keyEquivalent: "")
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+        NSApp.mainMenu = mainMenu
     }
 
     @objc private func toggleDragMode() {
