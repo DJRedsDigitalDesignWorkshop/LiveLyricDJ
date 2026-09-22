@@ -59,17 +59,18 @@ dist/                                build outputs (.app, .dmg) — not tracked,
 - [x] App builds clean (`swift build`, release too), launches, runs, quits cleanly
 - [x] OSC codec + LRC parser verified by standalone tests (round-trip ,ssb, argless /Ping, bundle + split TCP frames, LRC offset/multi-tag) — all passed
 - [x] LRCLIB endpoints verified live (`/api/get` with duration, `/api/search`)
-- [x] Packaged: `dist/SeratoLyrics.app` (ad-hoc signed), installed to `/Applications`, DMG built (`dist/SeratoLyrics-1.0.0.dmg`)
+- [x] Packaged universal macOS 13+ release: `dist/SeratoLyrics.app` and `dist/SeratoLyrics-1.0.2.dmg`
 - [ ] **NOT tested live against Serato DJ Pro** — this is the #1 open item
-- [ ] Not signed for distribution / not notarized
-- [ ] Not a git repo; no README; no tests target in Package.swift
+- [x] Signed with `Developer ID Application: justin marsh (JZMJB5THL9)`, notarized, and stapled
+- [x] Gatekeeper accepts both the app and DMG as `Notarized Developer ID`
+- [x] Local Git repository initialized; release history begins at `954d67a`
+- [ ] No README or automated test target in `Package.swift`
 
-## 5. The task for the next agent: sign + notarize + release
+## 5. Release pipeline
 
-### Prerequisites (user must do — involves their credentials)
-1. Create a **Developer ID Application** certificate: Xcode → Settings → Accounts → their team → Manage Certificates → + → Developer ID Application. The user currently has ONLY an `Apple Development` certificate (`justin marsh (5YQH72XQBY)`) which **cannot** notarize — a Developer ID Application cert requires paid Apple Developer membership.
-2. Create an app-specific password at appleid.apple.com (Sign-In & Security → App-Specific Passwords).
-3. Store notary credentials **as the user** (do not ask them to paste the password into chat):
+### Prerequisites
+1. A valid **Developer ID Application** certificate in Keychain. Current identity: `Developer ID Application: justin marsh (JZMJB5THL9)`.
+2. A `notarytool` Keychain profile named `SeratoLyrics`. To replace it, store credentials **as the user** (do not paste the password into chat):
    ```bash
    xcrun notarytool store-credentials "SeratoLyrics" \
        --apple-id "<their Apple ID email>" --team-id "<TEAMID>" \
@@ -78,23 +79,14 @@ dist/                                build outputs (.app, .dmg) — not tracked,
 
 ### Release pipeline (run from `/Users/user/Documents/serato lyrics display`)
 ```bash
-# 1. Sign + build + install
-SIGN_IDENTITY="Developer ID Application: justin marsh (<TEAMID>)" ./scripts/build-app.sh
-
-# 2. Notarize + staple the app
-./scripts/notarize.sh            # uses keychain profile "SeratoLyrics"
-
-# 3. Verify
-xcrun stapler validate dist/SeratoLyrics.app && spctl -a -vv dist/SeratoLyrics.app
-
-# 4. Package, then notarize the DMG too (best practice)
-VERSION="1.0.0" ./scripts/make-dmg.sh
-xcrun notarytool submit dist/SeratoLyrics-1.0.0.dmg --wait --keychain-profile "SeratoLyrics"
-xcrun stapler staple dist/SeratoLyrics-1.0.0.dmg
-spctl -a -vv --type open --context context:primary-signature dist/SeratoLyrics-1.0.0.dmg
+# Builds universal app, signs it, notarizes/staples the app and DMG,
+# then verifies both with Gatekeeper.
+SIGN_IDENTITY="Developer ID Application: justin marsh (JZMJB5THL9)" \
+  VERSION="1.0.2" BUILD="3" INSTALL_APPS=0 ./scripts/build-app.sh
+VERSION="1.0.2" ./scripts/notarize.sh
 ```
 
-Note: `scripts/notarize.sh` currently submits only the .app — the DMG notarization commands above are the extra step.
+`scripts/notarize.sh` archives the app, notarizes and staples it, builds and signs the DMG, then notarizes, staples, and Gatekeeper-verifies the DMG.
 
 ## 6. Testing checklist (before/after release — user must run)
 
@@ -112,9 +104,8 @@ Note: `scripts/notarize.sh` currently submits only the .app — the DMG notariza
 - Only decks 0-1 displayed (two lanes, per user's design)
 - No album on the wire; lyrics matching uses artist+title+duration (duration from file tags)
 - Lyrics source: LRCLIB (free, no key) with LyricsOvh plain-text fallback; cache is local JSON keyed by SHA-1 of normalized artist|title|duration
-- Bundle ID currently `com.seratolyrics.app` — user should confirm a final one before release
-- Not a git repo yet — suggest `git init` before distributing
-- Ad-hoc-signed builds will trip Gatekeeper on other Macs; only Developer ID + notarized builds are distributable
+- Bundle ID is `com.seratolyrics.app`.
+- Version 1.0.2 is universal (`arm64` + `x86_64`) and installs as a notarized Developer ID app on macOS 13+.
 
 ## 8. Useful references
 
