@@ -43,7 +43,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "music.note", accessibilityDescription: "SeratoLyrics")
+            button.title = "♫ Lyrics"
+            button.toolTip = "SeratoLyrics controls: move banner, snap to top, or quit"
         }
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Drag Mode: Move Banner", action: #selector(toggleDragMode), keyEquivalent: ""))

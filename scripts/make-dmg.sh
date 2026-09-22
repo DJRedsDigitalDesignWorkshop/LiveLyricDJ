@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="${VERSION:-1.0.0}"
+VERSION="${VERSION:-1.0.1}"
 APP="dist/SeratoLyrics.app"
 DMG="dist/SeratoLyrics-$VERSION.dmg"
 [ -d "$APP" ] || { echo "No $APP — run ./scripts/build-app.sh first"; exit 1; }
