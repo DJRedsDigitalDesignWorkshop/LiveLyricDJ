@@ -1,5 +1,5 @@
 #!/bin/bash
-# Notarizes and staples SeratoLyrics.app with Apple's notary service.
+# Notarizes and staples a SeratoLyrics app and its DMG with Apple's notary service.
 # Requires a Developer ID Application certificate and App Store Connect
 # credentials. Use a keychain profile to avoid passing secrets on the CLI:
 #
@@ -7,21 +7,40 @@
 #       --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-password"
 #
 # Usage:
-#   ./scripts/notarize.sh                 # uses keychain profile "SeratoLyrics"
-#   APPLE_ID=... TEAM_ID=... APPLE_APP_PASSWORD=... ./scripts/notarize.sh
+#   VERSION="1.0.2" ./scripts/notarize.sh # uses keychain profile "SeratoLyrics"
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APP="dist/SeratoLyrics.app"
 [ -d "$APP" ] || { echo "No $APP — run ./scripts/build-app.sh with SIGN_IDENTITY first"; exit 1; }
+VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")}"
+ZIP="dist/SeratoLyrics-$VERSION-notarization.zip"
+DMG="dist/SeratoLyrics-$VERSION.dmg"
+
+echo "==> Archiving app for notarization"
+rm -f "$ZIP"
+ditto -c -k --keepParent "$APP" "$ZIP"
 
 if [ -n "${APPLE_ID:-}" ] && [ -n "${TEAM_ID:-}" ] && [ -n "${APPLE_APP_PASSWORD:-}" ]; then
-    xcrun notarytool submit "$APP" --wait \
+    xcrun notarytool submit "$ZIP" --wait \
         --apple-id "$APPLE_ID" --team-id "$TEAM_ID" --password "$APPLE_APP_PASSWORD"
 else
-    xcrun notarytool submit "$APP" --wait --keychain-profile "SeratoLyrics"
+    xcrun notarytool submit "$ZIP" --wait --keychain-profile "SeratoLyrics"
 fi
 
 xcrun stapler staple "$APP"
-echo "==> Notarized and stapled: $APP"
-codesign -dv --verbose=4 "$APP" 2>&1 | grep -E "Authority|TeamIdentifier" || true
+VERSION="$VERSION" ./scripts/make-dmg.sh
+
+if [ -n "${APPLE_ID:-}" ] && [ -n "${TEAM_ID:-}" ] && [ -n "${APPLE_APP_PASSWORD:-}" ]; then
+    xcrun notarytool submit "$DMG" --wait \
+        --apple-id "$APPLE_ID" --team-id "$TEAM_ID" --password "$APPLE_APP_PASSWORD"
+else
+    xcrun notarytool submit "$DMG" --wait --keychain-profile "SeratoLyrics"
+fi
+
+xcrun stapler staple "$DMG"
+xcrun stapler validate "$APP"
+xcrun stapler validate "$DMG"
+spctl -a -vv "$APP"
+spctl -a -vv --type open --context context:primary-signature "$DMG"
+echo "==> Notarized, stapled release: $DMG"
