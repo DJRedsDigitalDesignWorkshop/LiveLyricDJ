@@ -62,39 +62,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMainMenu() {
         let mainMenu = NSMenu()
         let appMenu = NSMenu(title: "LiveLyricDJ")
-        appMenu.addItem(NSMenuItem(
-            title: "About LiveLyricDJ",
-            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
-            keyEquivalent: ""
+        appMenu.minimumWidth = 202
+        appMenu.addItem(opaqueMenuItem(
+            "About LiveLyricDJ",
+            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:))
         ))
         appMenu.addItem(NSMenuItem.separator())
-
-        let servicesMenu = NSMenu(title: "Services")
-        NSApp.servicesMenu = servicesMenu
-        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
-        servicesItem.submenu = servicesMenu
-        appMenu.addItem(servicesItem)
-
-        appMenu.addItem(NSMenuItem.separator())
-        appMenu.addItem(NSMenuItem(
-            title: "Hide LiveLyricDJ",
+        appMenu.addItem(opaqueMenuItem(
+            "Hide LiveLyricDJ",
+            shortcut: "⌘H",
             action: #selector(NSApplication.hide(_:)),
             keyEquivalent: "h"
         ))
-        appMenu.addItem(NSMenuItem(
-            title: "Hide Others",
+        appMenu.addItem(opaqueMenuItem(
+            "Hide Others",
+            shortcut: "⌥⌘H",
             action: #selector(NSApplication.hideOtherApplications(_:)),
-            keyEquivalent: "h"
+            keyEquivalent: "h",
+            modifiers: [.command, .option]
         ))
-        appMenu.items.last?.keyEquivalentModifierMask = [.command, .option]
-        appMenu.addItem(NSMenuItem(
-            title: "Show All",
-            action: #selector(NSApplication.unhideAllApplications(_:)),
-            keyEquivalent: ""
+        appMenu.addItem(opaqueMenuItem(
+            "Show All",
+            action: #selector(NSApplication.unhideAllApplications(_:))
         ))
         appMenu.addItem(NSMenuItem.separator())
-        appMenu.addItem(NSMenuItem(
-            title: "Quit LiveLyricDJ",
+        appMenu.addItem(opaqueMenuItem(
+            "Quit LiveLyricDJ",
+            shortcut: "⌘Q",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         ))
@@ -102,6 +96,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
         NSApp.mainMenu = mainMenu
+    }
+
+    private func opaqueMenuItem(
+        _ title: String,
+        shortcut: String = "",
+        action: Selector,
+        keyEquivalent: String = "",
+        modifiers: NSEvent.ModifierFlags = .command
+    ) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.keyEquivalentModifierMask = modifiers
+        item.view = OpaqueMenuRow(title: title, shortcut: shortcut, action: action)
+        return item
     }
 
     @objc private func toggleDragMode() {
@@ -114,6 +121,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func snapToTop() {
         windowController?.positionAtTop()
+    }
+}
+
+private final class OpaqueMenuRow: NSView {
+    private let title: String
+    private let shortcut: String
+    private let action: Selector
+    private var isHighlighted = false { didSet { needsDisplay = true } }
+    private var trackingArea: NSTrackingArea?
+
+    init(title: String, shortcut: String, action: Selector) {
+        self.title = title
+        self.shortcut = shortcut
+        self.action = action
+        super.init(frame: NSRect(x: 0, y: 0, width: 202, height: 30))
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override var isOpaque: Bool { true }
+
+    override func updateTrackingAreas() {
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.activeAlways, .mouseEnteredAndExited, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { isHighlighted = true }
+    override func mouseExited(with event: NSEvent) { isHighlighted = false }
+
+    override func mouseDown(with event: NSEvent) {
+        NSApp.sendAction(action, to: nil, from: self)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        (isHighlighted ? NSColor.controlAccentColor : NSColor(calibratedWhite: 0.14, alpha: 1)).setFill()
+        bounds.fill()
+
+        let titleAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.menuFont(ofSize: 13),
+            .foregroundColor: isHighlighted ? NSColor.selectedMenuItemTextColor : NSColor.white,
+        ]
+        title.draw(at: NSPoint(x: 12, y: 8), withAttributes: titleAttributes)
+        guard !shortcut.isEmpty else { return }
+        let shortcutSize = shortcut.size(withAttributes: titleAttributes)
+        shortcut.draw(
+            at: NSPoint(x: bounds.maxX - shortcutSize.width - 12, y: 8),
+            withAttributes: titleAttributes
+        )
     }
 }
 
