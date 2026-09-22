@@ -16,6 +16,8 @@ APP="dist/SeratoLyrics.app"
 VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")}"
 ZIP="dist/SeratoLyrics-$VERSION-notarization.zip"
 DMG="dist/SeratoLyrics-$VERSION.dmg"
+SIGN_IDENTITY="${SIGN_IDENTITY:-$(codesign -dv --verbose=4 "$APP" 2>&1 | sed -n 's/^Authority=\(Developer ID Application:.*\)$/\1/p' | head -n 1)}"
+[ -n "$SIGN_IDENTITY" ] || { echo "No Developer ID Application signing identity found on $APP"; exit 1; }
 
 echo "==> Archiving app for notarization"
 rm -f "$ZIP"
@@ -29,7 +31,7 @@ else
 fi
 
 xcrun stapler staple "$APP"
-VERSION="$VERSION" ./scripts/make-dmg.sh
+SIGN_IDENTITY="$SIGN_IDENTITY" VERSION="$VERSION" ./scripts/make-dmg.sh
 
 if [ -n "${APPLE_ID:-}" ] && [ -n "${TEAM_ID:-}" ] && [ -n "${APPLE_APP_PASSWORD:-}" ]; then
     xcrun notarytool submit "$DMG" --wait \
