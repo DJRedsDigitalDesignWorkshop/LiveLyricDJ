@@ -8,6 +8,11 @@ let package = Package(
         .executableTarget(
             name: "LiveLyricDJ",
             path: "Sources/LiveLyricDJ"
+        ),
+        .testTarget(
+            name: "LiveLyricDJTests",
+            dependencies: ["LiveLyricDJ"],
+            path: "Tests/LiveLyricDJTests"
         )
     ]
 )

@@ -2,11 +2,11 @@
 # Packages the signed app into a DMG for distribution.
 #
 # Usage:
-#   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" VERSION="1.0.6" ./scripts/make-dmg.sh
+#   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" VERSION="1.1.0" ./scripts/make-dmg.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="${VERSION:-1.0.6}"
+VERSION="${VERSION:-1.1.0}"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 APP="dist/LiveLyricDJ.app"
 DMG="dist/LiveLyricDJ-$VERSION.dmg"

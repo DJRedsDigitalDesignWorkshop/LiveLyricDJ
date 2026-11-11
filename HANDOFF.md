@@ -1,6 +1,20 @@
+# Current handoff — 1.1.0 (2026-11-11)
+
+Author: djred. See README.md for the current controls and build workflow.
+
+Release: 1.1.0 build 8 is universal arm64/x86_64, Developer ID signed, Apple-notarized and stapled as both app and DMG; Gatekeeper accepts both. Installed at `/Applications/LiveLyricDJ.app`; installer is `dist/LiveLyricDJ-1.1.0.dmg`. No Git remote is configured.
+
+Validation: 23 regression tests pass (timing, metadata, matching, LRC, OSC, and workspace geometry). The current source compiles without code warnings. The custom resize grip and permission-dependent Make Room action still need hands-on verification; CUA coordinate actions for Serato failed, and CUA cannot inspect the app while its only panel is hidden.
+
+This revision replaces the tall stacked banner with compact side-by-side decks and adds user resizing, saved placement, and per-deck lyric timing controls. Metadata lookup, lyric matching, and playhead tracking were reviewed for the reported lyric misalignment. The original notes below describe the protocol and previous 1.0.6 release; their release/test status is historical.
+
+Live connection, correct lyric selection, and lyric progression during playback were observed with a TIDAL Meghan Trainor track. Serato was paused after the test. Exact audible timestamp alignment and minimum-window clearance still require validation. User feedback confirmed a shorter overlay alone was intrusive, so the final revision hides overlapping lyrics and adds an explicit Make Room action (Accessibility permission required). A synthetic preview cannot verify provider timestamps or the user's specific song edit.
+
+---
+
 # LiveLyricDJ — Handoff Document
 
-Written for an agent with no prior context on this project. The project is **not** a git repo yet — everything lives on disk at `/Users/user/Documents/serato lyrics display`.
+Written for an agent with no prior context on this project. The project has a local Git repository (no configured remote) at `/Users/user/Documents/serato lyrics display`.
 
 ---
 

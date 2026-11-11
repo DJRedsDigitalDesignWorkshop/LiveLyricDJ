@@ -7,7 +7,7 @@
 #       --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-password"
 #
 # Usage:
-#   VERSION="1.0.6" ./scripts/notarize.sh # uses keychain profile "SeratoLyrics"
+#   VERSION="1.1.0" ./scripts/notarize.sh # uses keychain profile "SeratoLyrics"
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

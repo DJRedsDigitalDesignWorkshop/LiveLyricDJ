@@ -34,6 +34,9 @@ enum OSCError: Error {
 /// Type tags: i = int32, f = float32, s = null-terminated string, b = blob.
 /// Every field is padded to a 4-byte boundary; blobs are length-prefixed.
 enum OSC {
+    private static let maxBundleDepth = 16
+    private static let bundlePrefix = Data("#bundle".utf8)
+
     static func pad4(_ n: Int) -> Int { (n + 3) & ~3 }
 
     // MARK: - Encoding
@@ -85,14 +88,27 @@ enum OSC {
         guard end < data.count else { throw OSCError.malformed("string not null-terminated") }
         let value = String(decoding: data[offset..<end], as: UTF8.self)
         let consumed = end - offset + 1
-        return (value, offset + pad4(consumed))
+        let paddedLength = pad4(consumed)
+        guard paddedLength <= data.count - offset else {
+            throw OSCError.malformed("string padding exceeds packet")
+        }
+        let paddedEnd = offset + paddedLength
+        guard data[(end + 1)..<paddedEnd].allSatisfy({ $0 == 0 }) else {
+            throw OSCError.malformed("string padding is not zero-filled")
+        }
+        return (value, paddedEnd)
     }
 
     static func decode(_ data: Data) throws -> OSCMessage {
         let (address, afterAddr) = try decodeString(data, 0)
         if afterAddr >= data.count { return OSCMessage(address: address, args: []) }
         let (tagString, afterTags) = try decodeString(data, afterAddr)
-        if tagString.isEmpty { return OSCMessage(address: address, args: []) }
+        if tagString.isEmpty {
+            guard afterTags == data.count else {
+                throw OSCError.malformed("unexpected data after empty type-tag string")
+            }
+            return OSCMessage(address: address, args: [])
+        }
         guard tagString.hasPrefix(",") else {
             throw OSCError.malformed("type-tag missing leading comma")
         }
@@ -102,11 +118,15 @@ enum OSC {
         for tag in tagString.dropFirst() {
             switch tag {
             case "i":
-                guard cursor + 4 <= data.count else { throw OSCError.malformed("int32 truncated") }
+                guard cursor <= data.count, data.count - cursor >= 4 else {
+                    throw OSCError.malformed("int32 truncated")
+                }
                 args.append(.i(Int32(bitPattern: readUInt32BE(data, cursor))))
                 cursor += 4
             case "f":
-                guard cursor + 4 <= data.count else { throw OSCError.malformed("float32 truncated") }
+                guard cursor <= data.count, data.count - cursor >= 4 else {
+                    throw OSCError.malformed("float32 truncated")
+                }
                 args.append(.f(Float(bitPattern: readUInt32BE(data, cursor))))
                 cursor += 4
             case "s":
@@ -114,15 +134,28 @@ enum OSC {
                 args.append(.s(s))
                 cursor = next
             case "b":
-                guard cursor + 4 <= data.count else { throw OSCError.malformed("blob length truncated") }
+                guard cursor <= data.count, data.count - cursor >= 4 else {
+                    throw OSCError.malformed("blob length truncated")
+                }
                 let blobLen = Int(readUInt32BE(data, cursor))
                 cursor += 4
-                guard cursor + blobLen <= data.count else { throw OSCError.malformed("blob data truncated") }
-                args.append(.b(Data(data[cursor..<cursor + blobLen])))
-                cursor += pad4(blobLen)
+                let paddedBlobLen = pad4(blobLen)
+                guard cursor <= data.count, paddedBlobLen <= data.count - cursor else {
+                    throw OSCError.malformed("blob data or padding truncated")
+                }
+                let blobEnd = cursor + blobLen
+                let paddedBlobEnd = cursor + paddedBlobLen
+                guard data[blobEnd..<paddedBlobEnd].allSatisfy({ $0 == 0 }) else {
+                    throw OSCError.malformed("blob padding is not zero-filled")
+                }
+                args.append(.b(Data(data[cursor..<blobEnd])))
+                cursor += paddedBlobLen
             default:
                 throw OSCError.malformed("unsupported type tag '\(tag)'")
             }
+        }
+        guard cursor == data.count else {
+            throw OSCError.malformed("unexpected trailing data after OSC message")
         }
         return OSCMessage(address: address, args: args)
     }
@@ -131,21 +164,43 @@ enum OSC {
     /// (8-byte marker + 8-byte time-tag + size-prefixed element packets).
     /// Bundles are flattened recursively into their contained messages.
     static func decodePacket(_ data: Data) throws -> [OSCMessage] {
-        if data.count >= 8 && String(decoding: data[0..<7], as: UTF8.self) == "#bundle" {
-            var messages: [OSCMessage] = []
-            var cursor = 16
-            while cursor + 4 <= data.count {
-                let size = Int(readUInt32BE(data, cursor))
-                cursor += 4
-                if size == 0 { continue }
-                guard cursor + size <= data.count else {
-                    throw OSCError.malformed("bundle element exceeds packet")
-                }
-                messages.append(contentsOf: try decodePacket(Data(data[cursor..<cursor + size])))
-                cursor += size
-            }
-            return messages
+        try decodePacket(data, bundleDepth: 0)
+    }
+
+    private static func decodePacket(_ data: Data, bundleDepth: Int) throws -> [OSCMessage] {
+        let hasBundlePrefix = data.count >= bundlePrefix.count
+            && data.prefix(bundlePrefix.count).elementsEqual(bundlePrefix)
+        guard hasBundlePrefix else { return [try decode(data)] }
+
+        guard data.count >= 8 else { throw OSCError.malformed("bundle marker truncated") }
+        guard data[7] == 0 else { throw OSCError.malformed("bundle marker missing null terminator") }
+        guard data.count >= 16 else { throw OSCError.malformed("bundle header truncated") }
+        guard bundleDepth < maxBundleDepth else {
+            throw OSCError.malformed("bundle nesting exceeds maximum depth")
         }
-        return [try decode(data)]
+
+        var messages: [OSCMessage] = []
+        var cursor = 16
+        while cursor < data.count {
+            guard data.count - cursor >= 4 else {
+                throw OSCError.malformed("bundle element size truncated")
+            }
+            let size = Int(readUInt32BE(data, cursor))
+            cursor += 4
+            guard size > 0 else { throw OSCError.malformed("bundle element has zero size") }
+            guard size % 4 == 0 else {
+                throw OSCError.malformed("bundle element size is not 4-byte aligned")
+            }
+            guard cursor <= data.count, size <= data.count - cursor else {
+                throw OSCError.malformed("bundle element exceeds packet")
+            }
+            let end = cursor + size
+            messages.append(contentsOf: try decodePacket(
+                Data(data[cursor..<end]),
+                bundleDepth: bundleDepth + 1
+            ))
+            cursor = end
+        }
+        return messages
     }
 }

@@ -8,7 +8,7 @@ enum LyricResult {
     case none
 }
 
-private struct LRCLIBRecord: Decodable {
+struct LRCLIBRecord: Decodable {
     let trackName: String
     let artistName: String
     let albumName: String?
@@ -76,7 +76,8 @@ final class LyricsService {
         }
         guard let url = comps.url,
               let (data, _) = await makeRequest(url),
-              let record = try? JSONDecoder().decode(LRCLIBRecord.self, from: data) else {
+              let record = try? JSONDecoder().decode(LRCLIBRecord.self, from: data),
+              Self.matches(record, artist: artist, title: title, duration: duration) else {
             return nil
         }
         return Self.result(from: record)
@@ -90,23 +91,10 @@ final class LyricsService {
         ]
         guard let url = comps.url,
               let (data, _) = await makeRequest(url),
-              let records = try? JSONDecoder().decode([LRCLIBRecord].self, from: data),
-              !records.isEmpty else {
+              let records = try? JSONDecoder().decode([LRCLIBRecord].self, from: data) else {
             return nil
         }
-        let synced = records.filter {
-            guard let s = $0.syncedLyrics else { return false }
-            return !s.isEmpty && !$0.instrumental
-        }
-        let pool = synced.isEmpty
-            ? records.filter { !$0.instrumental }
-            : synced
-        guard !pool.isEmpty else { return nil }
-        let best = pool.min { a, b in
-            let da = duration.map { abs($0 - a.duration) } ?? 0
-            let db = duration.map { abs($0 - b.duration) } ?? 0
-            return da < db
-        }
+        let best = Self.selectBestMatch(in: records, artist: artist, title: title, duration: duration)
         guard let best else { return nil }
         return Self.result(from: best)
     }
@@ -174,10 +162,136 @@ final class LyricsService {
                 .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
                 .filter { $0.isLetter || $0.isNumber }
         }
-        let base = "\(norm(artist))|\(norm(title))|\(Int(duration ?? 0))"
+        // A new namespace prevents old, unvalidated search results from being
+        // reused as if they had passed the current identity checks.
+        let base = "v2|\(norm(artist))|\(norm(title))|\(Int(duration ?? 0))"
         return Data(Insecure.SHA1.hash(data: Data(base.utf8)))
             .map { String(format: "%02x", $0) }
             .joined()
+    }
+
+    /// Selects only records that match the requested song identity and have a
+    /// plausible duration. This pure function is also used by fixture tests.
+    static func selectBestMatch(
+        in records: [LRCLIBRecord],
+        artist: String,
+        title: String,
+        duration: Double?
+    ) -> LRCLIBRecord? {
+        let matching = records.filter {
+            matches($0, artist: artist, title: title, duration: duration)
+        }
+        let withLyrics = matching.filter { record in
+            guard !record.instrumental else { return false }
+            let hasSynced = !(record.syncedLyrics ?? "").isEmpty
+                && !LRCParser.parse(record.syncedLyrics ?? "").isEmpty
+            return hasSynced || !(record.plainLyrics ?? "").isEmpty
+        }
+        let synced = withLyrics.filter {
+            !($0.syncedLyrics ?? "").isEmpty
+                && !LRCParser.parse($0.syncedLyrics ?? "").isEmpty
+        }
+        let pool = !synced.isEmpty
+            ? synced
+            : (withLyrics.isEmpty ? matching.filter(\.instrumental) : withLyrics)
+        return pool.min {
+            matchScore($0, artist: artist, title: title, duration: duration)
+                < matchScore($1, artist: artist, title: title, duration: duration)
+        }
+    }
+
+    private static func matches(
+        _ record: LRCLIBRecord,
+        artist: String,
+        title: String,
+        duration: Double?
+    ) -> Bool {
+        guard !normalizedIdentity(title).isEmpty,
+              titleMatches(requested: title, candidate: record.trackName),
+              artistMatches(requested: artist, candidate: record.artistName),
+              record.duration.isFinite, record.duration > 0 else {
+            return false
+        }
+        guard let duration else { return true }
+        guard duration.isFinite, duration > 0 else { return false }
+        let tolerance = max(8.0, duration * 0.07)
+        return abs(duration - record.duration) <= tolerance
+    }
+
+    private static func matchScore(
+        _ record: LRCLIBRecord,
+        artist: String,
+        title: String,
+        duration: Double?
+    ) -> Double {
+        let titleExact = normalizedIdentity(record.trackName) == normalizedIdentity(title)
+        let artistExact = normalizedIdentity(record.artistName) == normalizedIdentity(artist)
+        let durationDifference = duration.map { abs($0 - record.duration) } ?? 0
+        return durationDifference + (titleExact ? 0 : 2) + (artistExact ? 0 : 1)
+    }
+
+    private static func titleMatches(requested: String, candidate: String) -> Bool {
+        !titleIdentityKeys(requested).isDisjoint(with: titleIdentityKeys(candidate))
+    }
+
+    private static func artistMatches(requested: String, candidate: String) -> Bool {
+        !artistIdentityKeys(requested).isDisjoint(with: artistIdentityKeys(candidate))
+    }
+
+    private static func titleIdentityKeys(_ value: String) -> Set<String> {
+        let full = normalizedIdentity(value)
+        var keys: Set<String> = full.isEmpty ? [] : [full]
+        // Feature credits are not part of the song's title. Keep version
+        // suffixes such as live, remix, and edit because they can change lyrics.
+        if let leadingTitle = splitIdentity(
+            value,
+            pattern: "(?i)\\b(?:feat(?:uring)?|ft\\.?)\\b"
+        ).first {
+            let key = normalizedIdentity(leadingTitle)
+            if !key.isEmpty { keys.insert(key) }
+        }
+        return keys
+    }
+
+    private static func artistIdentityKeys(_ value: String) -> Set<String> {
+        let full = normalizedIdentity(value)
+        var keys: Set<String> = full.isEmpty ? [] : [full]
+        // Serato may include a primary performer and a guest in one field,
+        // while LRCLIB may store only one complete credit. Compare whole names
+        // from those credits; never use substring matching.
+        let pattern = "(?i)(?:,|;|&|/|\\+|\\bfeat(?:uring)?\\b|\\bft\\.?\\b|\\bwith\\b)"
+        for component in splitIdentity(value, pattern: pattern) {
+            let key = normalizedIdentity(component)
+            if !key.isEmpty { keys.insert(key) }
+        }
+        return keys
+    }
+
+    private static func splitIdentity(_ value: String, pattern: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [value] }
+        let nsValue = value as NSString
+        let matches = regex.matches(in: value, range: NSRange(location: 0, length: nsValue.length))
+        guard !matches.isEmpty else { return [value] }
+        var components: [String] = []
+        var start = 0
+        for match in matches {
+            let range = match.range
+            components.append(nsValue.substring(with: NSRange(location: start, length: range.location - start)))
+            start = range.location + range.length
+        }
+        components.append(nsValue.substring(from: start))
+        return components
+    }
+
+    private static func normalizedIdentity(_ value: String) -> String {
+        let folded = value.folding(
+            options: [.diacriticInsensitive, .caseInsensitive],
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+        let spaced = folded.unicodeScalars.map {
+            CharacterSet.alphanumerics.contains($0) ? String($0) : " "
+        }.joined()
+        return spaced.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     private func cacheURL(key: String) -> URL {

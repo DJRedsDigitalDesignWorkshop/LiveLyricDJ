@@ -195,13 +195,13 @@ final class SeratoServer {
     private func connectionClosed(_ session: Session) {
         guard sessions.removeValue(forKey: ObjectIdentifier(session)) != nil else { return }
         session.connection.cancel()
-        if sessions.isEmpty {
-            setConnected(false)
-        }
+        // The heartbeat socket can outlive the paired control socket.
+        // Only a remaining paired stream can still supply deck updates.
+        setConnected(sessions.values.contains { $0.didPair })
     }
 
     private func setConnected(_ connected: Bool) {
-        Task { @MainActor [weak self] in
+        DispatchQueue.main.async { [weak self] in
             guard let self, self.isConnected != connected else { return }
             self.isConnected = connected
             self.delegate?.seratoConnectionStateChanged(connected: connected)
@@ -228,7 +228,9 @@ final class SeratoServer {
 
         guard let deck = deckIndex() else { return }
 
-        Task { @MainActor [weak self] in
+        // FIFO dispatch preserves title/artist/filepath/reset ordering from
+        // Serato's serial receive queue; independent Tasks do not promise it.
+        DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             switch msg.address {
             case "/Status/Deck/Song/Title":
