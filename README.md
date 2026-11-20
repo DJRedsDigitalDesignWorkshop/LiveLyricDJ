@@ -2,6 +2,12 @@
 
 A macOS lyrics companion for Serato DJ Pro. Author: djred.
 
+## Download
+
+[Download LiveLyricDJ 1.1.0 for macOS](https://github.com/DJRedsDigitalDesignWorkshop/LiveLyricDJ/releases/download/v1.1.0/LiveLyricDJ-1.1.0.dmg)
+
+The notarized installer supports Apple silicon and Intel Macs running macOS 13 or later. Open the DMG and drag LiveLyricDJ into Applications. Launch it alongside Serato DJ Pro and enable LiveLyricDJ under External Control if needed.
+
 ## Banner controls
 
 Lyrics automatically hide when they would cover Serato. Use **Banner → Make Room for Lyrics…** to fit Serato beneath the banner. macOS Accessibility permission is required for automatic arrangement; alternatively, move Serato down manually. Fullscreen Serato leaves no separate space, so lyrics remain hidden until you exit fullscreen or place them on another display.

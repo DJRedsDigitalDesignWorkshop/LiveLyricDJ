@@ -2,7 +2,7 @@
 
 Author: djred. See README.md for the current controls and build workflow.
 
-Release: 1.1.0 build 8 is universal arm64/x86_64, Developer ID signed, Apple-notarized and stapled as both app and DMG; Gatekeeper accepts both. Installed at `/Applications/LiveLyricDJ.app`; installer is `dist/LiveLyricDJ-1.1.0.dmg`. No Git remote is configured.
+Release: 1.1.0 build 8 is universal arm64/x86_64, Developer ID signed, Apple-notarized and stapled as both app and DMG; Gatekeeper accepts both. Installed at `/Applications/LiveLyricDJ.app`; installer is `dist/LiveLyricDJ-1.1.0.dmg`. Public downloads are available from [GitHub Releases](https://github.com/DJRedsDigitalDesignWorkshop/LiveLyricDJ/releases).
 
 Validation: 23 regression tests pass (timing, metadata, matching, LRC, OSC, and workspace geometry). The current source compiles without code warnings. The custom resize grip and permission-dependent Make Room action still need hands-on verification; CUA coordinate actions for Serato failed, and CUA cannot inspect the app while its only panel is hidden.
 
@@ -14,7 +14,7 @@ Live connection, correct lyric selection, and lyric progression during playback 
 
 # LiveLyricDJ — Handoff Document
 
-Written for an agent with no prior context on this project. The project has a local Git repository (no configured remote) at `/Users/user/Documents/serato lyrics display`.
+These historical notes describe the original build and release workflow.
 
 ---
 
